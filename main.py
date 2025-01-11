@@ -22,7 +22,7 @@ except Exception as e:
 # Helper functions
 def fetch_news(company, investing_horizon):
     load_dotenv()
-    api_key = os.getenv("FINNHUB_API_KEY")
+    api_key = os.getenv("NEXT_PUBLIC_FINNHUB_API_KEY")
     finnhub_client = finnhub.Client(api_key=api_key)
     today = datetime.now()
     from_date = today - (timedelta(days=30) if investing_horizon == "short-term" else timedelta(days=365*5))
