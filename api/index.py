@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import finnhub
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import MinMaxScaler
 from dotenv import load_dotenv
@@ -84,6 +84,7 @@ app = Flask(__name__)
 CORS(app)
 
 @app.route('/recommend', methods=['POST'])
+@cross_origin()
 def recommend():
     try:
         data = request.json
