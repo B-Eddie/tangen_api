@@ -92,47 +92,93 @@ def analyze_sentiment(articles):
 
 def recommend_stocks(companies, context, horizon="short-term"):
     """
-    Generate stock recommendations based on data analysis and sentiment.
-
-    Args:
-        companies (list): List of company ticker symbols.
-        context (dict): Additional context for recommendations.
-        horizon (str): Investing horizon ("short-term" or "long-term").
-
-    Returns:
-        list: Recommended stocks with analysis metadata.
+    Generate stock recommendations with realistic scoring.
     """
     recommendations = []
 
     for company in companies:
         try:
-            print(f"Analyzing {company} for {horizon} investment.")
-
-            # Fetch stock data and news
+            # Fetch data
             stock_data = fetch_stock_data(company, horizon)
             news = fetch_news(company, horizon)
             
             if not stock_data or not news:
-                print(f"Skipping {company} due to insufficient data.")
                 continue
 
-            # Analyze sentiment from news
+            # Analyze sentiment
             articles = preprocess_articles(news)
             sentiment = analyze_sentiment(articles)
 
-            # Prepare the recommendation entry
+            # Calculate composite score with realistic weighting
+            score_components = {
+                'recent_performance': calculate_recent_performance(stock_data),
+                'historical_growth': calculate_historical_growth(stock_data),
+                'sentiment_score': calculate_adjusted_sentiment(sentiment),
+                'risk_factor': calculate_risk_factor(stock_data)
+            }
+
+            # Weightings based on investment horizon
+            weights = {
+                'short-term': {
+                    'recent_performance': 0.4,
+                    'historical_growth': 0.2,
+                    'sentiment_score': 0.3,
+                    'risk_factor': 0.1
+                },
+                'long-term': {
+                    'recent_performance': 0.2,
+                    'historical_growth': 0.4,
+                    'sentiment_score': 0.2,
+                    'risk_factor': 0.2
+                }
+            }
+
+            # Calculate final score (0-100 scale)
+            composite_score = sum(
+                score_components[factor] * weights[horizon][factor]
+                for factor in score_components
+            )
+
             recommendations.append({
                 "company": company,
-                "stock_data": stock_data,
-                "sentiment": sentiment
+                "score": round(composite_score, 1),
+                "details": {
+                    "stock_data": stock_data,
+                    "sentiment": sentiment,
+                    "components": score_components
+                }
             })
+
         except Exception as e:
             print(f"Failed to analyze {company}: {e}")
 
-    # Sort recommendations by positive sentiment score
-    recommendations.sort(key=lambda x: x['sentiment']['positive'], reverse=True)
+    # Sort by composite score
+    return sorted(recommendations, key=lambda x: x['score'], reverse=True)
 
-    return recommendations
+# New helper functions
+def calculate_recent_performance(stock_data):
+    """Normalized recent performance (0-100 scale)"""
+    raw_score = stock_data['recent_growth']
+    return min(max((raw_score + 20) / 40 * 100, 0), 100)  # Map -20% to +20% → 0-100
+
+def calculate_historical_growth(stock_data):
+    """Normalized historical growth (0-100 scale)"""
+    raw_score = stock_data['historical_growth']
+    return min(max((raw_score + 50) / 100 * 100, 0), 100)  # Map -50% to +50% → 0-100
+
+def calculate_adjusted_sentiment(sentiment):
+    """Weighted sentiment score (0-100 scale)"""
+    if sentiment['total'] == 0:
+        return 50  # Neutral baseline
+    
+    positive_weight = sentiment['positive'] / sentiment['total']
+    negative_weight = sentiment['negative'] / sentiment['total']
+    return 50 + (positive_weight - negative_weight) * 50
+
+def calculate_risk_factor(stock_data):
+    """Inverse volatility score (0-100 scale)"""
+    raw_volatility = stock_data['volatility']
+    return max(0, 100 - (raw_volatility * 100))  # 0% volatility = 100, 100% volatility = 0
 
 def fetch_news(company, investing_horizon, start_date=None, end_date=None):
     try:
