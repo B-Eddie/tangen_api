@@ -14,7 +14,16 @@ from cachetools import TTLCache
 import joblib 
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/recommend": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": "*",
+        "expose_headers": "*",
+        "supports_credentials": True,
+        "max_age": 86400
+    }
+})
 
 MODEL_DIR = "models"
 MODEL_PATH = os.path.join(MODEL_DIR, "confidence_model.joblib")
